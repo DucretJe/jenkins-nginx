@@ -1,17 +1,26 @@
 node{
-  def app
-  
+    
+    def registry = 'jducret/nginx'
+    def image = "${registry}:version-${env.BUILD_ID}"
+
     stage('Clone') {
-      checkout scm
+        git 'https://github.com/DucretJe/jenkins-nginx.git'
     }
-    stage('Build image') {
-      app = docker.build("jducret/nginx")
+    
+    def img = stage('Build') {
+        docker.build("$image", '.')
     }
-  
-    stage('Run image') {
-      docker.image('jducret/nginx').withRun('-p 80:80') { c ->
-      sh 'docker ps'
-      sh 'curl localhost'
-      }
+    
+    stage('Run') {
+        img.withRun("--name run-$BUILD_ID -p 80:80") { c ->
+            sh 'curl localhost'
+        }
+    }
+    
+    stage('Push') {
+        docker.withRegistry('', 'dockerhub1') {
+            img.push 'latest'
+            img.push()
+        }
     }
 }
